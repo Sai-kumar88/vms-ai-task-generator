@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI VMS Task Generator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .option-card {
+      transition: all 0.2s ease-in-out;
+    }
+    .option-card:hover {
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+    }
+    .selected-card {
+      border-color: #10b981 !important;
+      box-shadow: 0 0 0 2px #10b981, 0 10px 15px -3px rgba(16, 185, 129, 0.1) !important;
+      background-color: #f0fdf4 !important;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col font-sans">
+
+  <!-- Clean Top Navigation Bar (No external links) -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-50">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-9 h-9 rounded-lg bg-emerald-600 flex items-center justify-center text-white shadow-sm">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+          </svg>
+        </div>
+        <h1 class="text-lg font-bold text-slate-900 tracking-tight">AI VMS Task Generator</h1>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="flex-grow max-w-4xl w-full mx-auto px-4 sm:px-6 py-8">
+
+    <!-- Input Card -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-8">
+      <label for="rawInput" class="block text-sm font-semibold text-slate-800 mb-2">
+        Task Details
+      </label>
+
+      <textarea id="rawInput" rows="4"
+        class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-slate-800 text-sm placeholder-slate-400 shadow-inner resize-y transition outline-none"
+        placeholder="Enter task details, notes, or issue here..."></textarea>
+
+      <div class="mt-4 flex items-center justify-end gap-3">
+        <button onclick="clearInput()" type="button"
+          class="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition">
+          Clear
+        </button>
+        <button id="submitBtn" onclick="generateTasks()" type="button"
+          class="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm shadow-sm transition active:scale-95 disabled:opacity-50">
+          <svg id="btnSpinner" class="hidden animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+          </svg>
+          <span id="btnText">Generate Task</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Clarification Card (shown when input is unclear or meaningless) -->
+    <div id="clarificationBox" class="hidden mb-8 rounded-2xl bg-amber-50 border-2 border-amber-300 p-6 shadow-sm">
+      <div class="flex items-start gap-4">
+        <div class="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+          </svg>
+        </div>
+        <div class="flex-grow">
+          <h3 class="text-base font-bold text-amber-900">Clarification Needed</h3>
+          <p id="clarificationQuestion" class="mt-1 text-sm text-amber-800 font-medium"></p>
+          <div class="mt-4 flex gap-2">
+            <input type="text" id="clarificationInput" placeholder="Add additional details here..."
+              class="flex-grow px-3 py-2 text-sm rounded-lg border border-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white">
+            <button onclick="submitClarification()"
+              class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold transition">
+              Submit Clarification
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Error Banner -->
+    <div id="errorBox" class="hidden mb-8 rounded-xl bg-rose-50 border border-rose-200 p-4 text-sm text-rose-800 flex items-center justify-between">
+      <span id="errorMessage">An error occurred.</span>
+      <button onclick="document.getElementById('errorBox').classList.add('hidden')" class="text-rose-500 hover:text-rose-700 font-bold ml-4">&times;</button>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loadingBox" class="hidden mb-8 text-center py-8">
+      <div class="inline-flex items-center gap-3 px-5 py-2.5 rounded-full bg-white border border-slate-200 text-slate-700 text-sm font-medium shadow-sm animate-pulse">
+        <svg class="animate-spin h-5 w-5 text-emerald-600" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+        </svg>
+        Generating task options...
+      </div>
+    </div>
+
+    <!-- Generated Task Options Results -->
+    <div id="resultsSection" class="hidden">
+      <div class="mb-4 flex items-center justify-between">
+        <div>
+          <h3 class="text-lg font-bold text-slate-900 flex items-center">
+            Generated Task Options
+            <span id="fallbackNotice" class="hidden text-xs bg-amber-100 text-amber-800 font-semibold px-2 py-0.5 rounded-md ml-2 border border-amber-200">
+              ⚡ Fallback: Nemotron 3.5 Bolt E4B
+            </span>
+          </h3>
+          <p class="text-xs text-slate-500">Pick the option that best fits your requirement, or copy it directly.</p>
+        </div>
+      </div>
+
+      <div id="optionsGrid" class="space-y-4">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    let currentOptionsData = [];
+
+    function clearInput() {
+      document.getElementById('rawInput').value = "";
+      document.getElementById('resultsSection').classList.add('hidden');
+      document.getElementById('clarificationBox').classList.add('hidden');
+      document.getElementById('errorBox').classList.add('hidden');
+    }
+
+    async function generateTasks() {
+      const rawText = document.getElementById('rawInput').value.trim();
+      if (!rawText) {
+        showError("Please enter some task details first.");
+        return;
+      }
+
+      setLoading(true);
+      hideMessages();
+
+      try {
+        const response = await fetch('/api/v1/tasks/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            raw_input: rawText,
+            num_options: 5
+          })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || data.detail || "Error generating tasks.");
+        }
+
+        if (data.is_clarification_needed) {
+          showClarification(data.clarification_question);
+        } else {
+          renderOptions(data.options, data);
+        }
+
+      } catch (err) {
+        showError(err.message || "Failed to connect to the server.");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    function submitClarification() {
+      const extra = document.getElementById('clarificationInput').value.trim();
+      if (!extra) return;
+      const original = document.getElementById('rawInput').value.trim();
+      document.getElementById('rawInput').value = `${original} - Context: ${extra}`;
+      document.getElementById('clarificationInput').value = "";
+      document.getElementById('clarificationBox').classList.add('hidden');
+      generateTasks();
+    }
+
+    function renderOptions(options, data) {
+      currentOptionsData = options;
+      const grid = document.getElementById('optionsGrid');
+      grid.innerHTML = '';
+
+      const fallbackNotice = document.getElementById('fallbackNotice');
+      if (fallbackNotice) {
+        if (data && data.is_fallback_used) {
+          fallbackNotice.classList.remove('hidden');
+        } else {
+          fallbackNotice.classList.add('hidden');
+        }
+      }
+
+      options.forEach(opt => {
+        const card = document.createElement('div');
+        card.className = "option-card bg-white rounded-xl p-6 border border-slate-200 shadow-sm transition";
+        card.id = `card-opt-${opt.id}`;
+
+        card.innerHTML = `
+          <div class="flex items-center justify-between mb-4">
+            <span class="text-xs font-bold px-2.5 py-1 rounded-md bg-slate-100 text-slate-700">Option ${opt.id}</span>
+            <div class="flex items-center gap-2">
+              <button onclick="pickOption(${opt.id})" id="pickBtn-${opt.id}"
+                class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 border border-slate-200 transition">
+                Pick This Task
+              </button>
+              <button onclick="copyOption(${opt.id})" id="copyBtn-${opt.id}"
+                class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white transition flex items-center gap-1">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
+                Copy
+              </button>
+            </div>
+          </div>
+
+          <div class="mb-4">
+            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">TASK TITLE / ISSUE :</span>
+            <h4 class="text-base font-bold text-slate-900 leading-snug">${escapeHtml(opt.title)}</h4>
+          </div>
+
+          <div>
+            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">DESCRIPTION :</span>
+            <p class="text-sm text-slate-700 leading-relaxed">${escapeHtml(opt.description)}</p>
+          </div>
+        `;
+
+        grid.appendChild(card);
+      });
+
+      document.getElementById('resultsSection').classList.remove('hidden');
+    }
+
+    function pickOption(id) {
+      document.querySelectorAll('.option-card').forEach(c => c.classList.remove('selected-card'));
+      const picked = document.getElementById(`card-opt-${id}`);
+      if (picked) {
+        picked.classList.add('selected-card');
+        const btn = document.getElementById(`pickBtn-${id}`);
+        btn.innerText = "✓ Selected";
+        btn.className = "px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 text-white border border-emerald-600 transition";
+      }
+    }
+
+    function copyOption(id) {
+      const opt = currentOptionsData.find(o => o.id === id);
+      if (!opt) return;
+
+      const formattedText = `TASK TITLE/ISSUE: ${opt.title}\n\nDESCRIPTION: ${opt.description}`;
+
+      navigator.clipboard.writeText(formattedText).then(() => {
+        const btn = document.getElementById(`copyBtn-${id}`);
+        const orig = btn.innerHTML;
+        btn.innerHTML = "✓ Copied!";
+        btn.classList.add('bg-emerald-600');
+        setTimeout(() => {
+          btn.innerHTML = orig;
+          btn.classList.remove('bg-emerald-600');
+        }, 1800);
+      });
+    }
+
+    function showClarification(question) {
+      document.getElementById('clarificationQuestion').innerText = question;
+      document.getElementById('clarificationBox').classList.remove('hidden');
+      document.getElementById('resultsSection').classList.add('hidden');
+    }
+
+    function showError(msg) {
+      document.getElementById('errorMessage').innerText = msg;
+      document.getElementById('errorBox').classList.remove('hidden');
+    }
+
+    function hideMessages() {
+      document.getElementById('clarificationBox').classList.add('hidden');
+      document.getElementById('errorBox').classList.add('hidden');
+      document.getElementById('resultsSection').classList.add('hidden');
+    }
+
+    function setLoading(isLoading) {
+      const btn = document.getElementById('submitBtn');
+      const spinner = document.getElementById('btnSpinner');
+      const txt = document.getElementById('btnText');
+      const skeleton = document.getElementById('loadingBox');
+
+      btn.disabled = isLoading;
+      if (isLoading) {
+        spinner.classList.remove('hidden');
+        txt.innerText = "Generating...";
+        skeleton.classList.remove('hidden');
+      } else {
+        spinner.classList.add('hidden');
+        txt.innerText = "Generate Task";
+        skeleton.classList.add('hidden');
+      }
+    }
+
+    function escapeHtml(str) {
+      return (str || "").replace(/[&<>"']/g, function(m) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m];
+      });
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,24 @@
+# Version control & test cache
+.git
+.github
+.pytest_cache
+tests
+
+# Virtual environments
+venv
+.venv
+env
+ENV
+
+# Bytecode & logs
+__pycache__
+*.py[cod]
+*$py.class
+*.log
+*.tmp
+
+# Local secrets & env files (configure these in Vercel Project Settings)
+.env
+.env.local
+.env.*.local
+
